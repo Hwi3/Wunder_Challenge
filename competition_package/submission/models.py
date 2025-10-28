@@ -34,6 +34,7 @@ class PredictionModel(nn.Module):
     """
     def __init__(self, input_dim=32, hidden_dim=128, num_layers=2, output_dim=32):
         super().__init__()
+        self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_dim)
 
@@ -46,7 +47,11 @@ class PredictionModel(nn.Module):
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
         ## Predict Next State
-        
+        device = next(self.parameters()).device
+        input_tensor = input_tensor.to(device)
+        with torch.no_grad():
+            output = self.forward(input_tensor)
+
         # For every new Sequence, reset the history
         if self.current_seq_ix != data_point.seq_ix:
             self.current_seq_ix = data_point.seq_ix
@@ -64,7 +69,7 @@ class PredictionModel(nn.Module):
             
         # Prepare Input Tensor
         input_tensor = torch.tensor(self.idx_prev100_list, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 100, feature_dim)
-    
+        input_tensor = input_tensor.to(device)
         return self.forward(input_tensor)
     
 

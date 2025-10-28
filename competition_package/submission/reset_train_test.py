@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 RATIO = 0.8
-test_file = "/workspaces/Wunder_Challenge/submission/datasets/train.parquet"
+test_file = "competition_package/datasets/train.parquet"
 
 df = pd.read_parquet(test_file)
 
@@ -16,5 +16,5 @@ train_seq_ixs = set(df['seq_ix'].unique()[:train_size])
 test_seq_ixs = set(df['seq_ix'].unique()[train_size:])
 train_df = df[df['seq_ix'].isin(train_seq_ixs)]
 test_df = df[df['seq_ix'].isin(test_seq_ixs)]
-train_df.to_csv("/workspaces/Wunder_Challenge/submission/datasets/train.csv", index=False)
-test_df.to_csv("/workspaces/Wunder_Challenge/submission/datasets/test.csv", index=False)
+train_df.to_csv("competition_package/datasets/train.csv", index=False)
+test_df.to_csv("competition_package/datasets/test.csv", index=False)

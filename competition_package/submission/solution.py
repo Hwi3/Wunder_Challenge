@@ -12,8 +12,10 @@ from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 
 
-device = torch.device("cpu")
-EPOCHS = 10
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print(device)
+EPOCHS = 1
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, seq_len=100):
@@ -54,21 +56,22 @@ class TimeSeriesDataset(Dataset):
 
 if __name__ == "__main__":
     # Check existence of test file
-    train_file = "/workspaces/Wunder_Challenge/submission/datasets/train.csv"
-    #test_file = "/workspaces/Wunder_Challenge/submission/datasets/test.csv"
+    train_file = r"../datasets/train.csv"
+    test_file = r"../datasets/test.csv"
     train_df = pd.read_csv(train_file)
-    #test_df = pd.read_csv(test_file)
+    test_df = pd.read_csv(test_file)
     train_dataset = TimeSeriesDataset(train_df)
-    #test_dataset = TimeSeriesDataset(test_df)
+    test_dataset = TimeSeriesDataset(test_df)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    #test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     model = PredictionModel()
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     for epoch in range(EPOCHS):
         model.train()
+        model = model.to(device)
         total_loss = 0
         for inputs, targets in tqdm(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
@@ -85,7 +88,8 @@ if __name__ == "__main__":
 
     #TESTING CODE ONLY#
     ##############################
-    scorer = ScorerStepByStep(test_file)
+    model.to("cpu")
+    scorer = ScorerStepByStep(test_df)
 
     print("Testing simple model with moving average...")
     print(f"Feature dimensionality: {scorer.dim}")
