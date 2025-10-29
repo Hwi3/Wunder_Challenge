@@ -17,12 +17,13 @@ class DataPoint:
 class PredictionModel:
     def predict(self, data_point: DataPoint) -> np.ndarray:
         # return current state as dummy prediction
+        print("HIHIOHOHOHOo")
         return data_point.state
 
 
 class ScorerStepByStep:
     def __init__(self, dataset_path: str):
-        self.dataset = pd.read_parquet(dataset_path)
+        self.dataset = pd.read_csv(dataset_path)
 
         # Calc feature dimension: first 3 columns are seq_ix, step_in_seq & need_prediction
         self.dim = self.dataset.shape[1] - 3
@@ -46,6 +47,7 @@ class ScorerStepByStep:
             #
             data_point = DataPoint(seq_ix, step_in_seq, need_prediction, new_state)
             next_prediction = model.predict(data_point)
+            print(row,next_prediction)
 
             self.check_prediction(data_point, next_prediction)
 

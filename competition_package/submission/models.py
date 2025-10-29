@@ -42,15 +42,11 @@ class PredictionModel(nn.Module):
         # x: (batch, seq_len, input_dim)
         out, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
         last_hidden = out[:, -1, :]  # use last time step
-        return self.fc(last_hidden)
-    
+        x = self.fc(last_hidden)
+        return x
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
         ## Predict Next State
-        device = next(self.parameters()).device
-        input_tensor = input_tensor.to(device)
-        with torch.no_grad():
-            output = self.forward(input_tensor)
 
         # For every new Sequence, reset the history
         if self.current_seq_ix != data_point.seq_ix:
@@ -69,9 +65,10 @@ class PredictionModel(nn.Module):
             
         # Prepare Input Tensor
         input_tensor = torch.tensor(self.idx_prev100_list, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 100, feature_dim)
-        input_tensor = input_tensor.to(device)
-        return self.forward(input_tensor)
-    
+
+        out = self.forward(input_tensor)
+        out = out.reshape(32, -1)
+        return out.detach().numpy()
 
 
 # class PredictionModel(nn.Module):

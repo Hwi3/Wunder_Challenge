@@ -2,6 +2,12 @@ import os
 import sys
 import torch.nn as nn
 import torch.optim as optim
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Add project root folder to path for importing utils
+sys.path.append(f"{CURRENT_DIR}/..")
+
+
 import numpy as np
 from utils import DataPoint, ScorerStepByStep
 from models import PredictionModel
@@ -10,12 +16,14 @@ import torch
 import pandas as pd
 from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
 EPOCHS = 1
+PATH = "weights/v2.pt"
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, seq_len=100):
@@ -30,7 +38,6 @@ class TimeSeriesDataset(Dataset):
         
         # Extract feature columns
         self.feature_cols = [str(i) for i in range(32)]
-        print("Feature columns:", len(self.feature_cols))
         # Group by sequence
         grouped = df.groupby("seq_ix")
         self.samples = []
@@ -62,34 +69,70 @@ if __name__ == "__main__":
     test_df = pd.read_csv(test_file)
     train_dataset = TimeSeriesDataset(train_df)
     test_dataset = TimeSeriesDataset(test_df)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     model = PredictionModel()
+    # move model to device before creating optimizer
+    model = model.to(device)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    # start lr 0.01
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
+    # end_factor = 0.0005 / 0.01 = 0.05
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.05, total_iters=EPOCHS)
+ 
+    # ensure weights directory exists
+    dirpath = os.path.dirname(PATH)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+ 
+    # TensorBoard writer for live loss visualization
+    writer = SummaryWriter(log_dir="runs/exp2")
+    global_step = 0
 
     for epoch in range(EPOCHS):
         model.train()
-        model = model.to(device)
-        total_loss = 0
-        for inputs, targets in tqdm(train_loader):
+        total_loss = 0.0
+        for batch_idx, (inputs, targets) in enumerate(tqdm(train_loader)):
             inputs, targets = inputs.to(device), targets.to(device)
             preds = model(inputs)
+            print(inputs.shape, targets.shape)
             loss = criterion(preds, targets)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}: loss={total_loss/len(train_loader):.6f}")
+ 
+            # log per-batch loss
+            writer.add_scalar("train/loss_batch", loss.item(), global_step)
+            # log current learning rate (per-batch)
+            current_lr = optimizer.param_groups[0]["lr"]
+            writer.add_scalar("train/lr", current_lr, global_step)
+            global_step += 1
+ 
+        avg_loss = total_loss / len(train_loader) if len(train_loader) > 0 else float("nan")
+        writer.add_scalar("train/loss_epoch", avg_loss, epoch)
+        print(f"Epoch {epoch+1}: loss={avg_loss:.6f} lr={optimizer.param_groups[0]['lr']:.6e}")
+        # step scheduler once per epoch
+        scheduler.step()
+ 
+    writer.flush()
+    torch.save(model.state_dict(), PATH)
+    writer.close()
 
     # Load data into scorer
     ##############################
 
     #TESTING CODE ONLY#
     ##############################
-    model.to("cpu")
-    scorer = ScorerStepByStep(test_df)
+    model = PredictionModel(input_dim=32, hidden_dim=128, output_dim=32)
+    # load weights from file (use map_location to be safe)
+    print("Model fc layer:", model.fc)
+    model.load_state_dict(torch.load(PATH, map_location=device))
+    model.eval()
+    # ScorerStepByStep expects a path to the dataset file, not a DataFrame
+    scorer = ScorerStepByStep(test_file)
 
     print("Testing simple model with moving average...")
     print(f"Feature dimensionality: {scorer.dim}")
