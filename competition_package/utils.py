@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 from dataclasses import dataclass
 from sklearn.metrics import r2_score
+import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -29,6 +30,12 @@ class ScorerStepByStep:
         self.dim = self.dataset.shape[1] - 3
         self.features = self.dataset.columns[3:]
 
+    def plot(self,Y_train, predicted):
+        plt.plot(Y_train, label='Actual Close')
+        plt.plot(predicted, label='Predicted Close')
+        plt.savefig("plot/graph_img.png")
+        plt.show()
+
     def score(self, model: PredictionModel) -> dict:
         predictions = []
         targets = []
@@ -47,12 +54,15 @@ class ScorerStepByStep:
             #
             data_point = DataPoint(seq_ix, step_in_seq, need_prediction, new_state)
             next_prediction = model.predict(data_point)
-            print(row,next_prediction)
+            #print(row,next_prediction)
 
             self.check_prediction(data_point, next_prediction)
-
+        
+        pred_arr = np.array(predictions)
+        targ_arr = np.array(targets)
+        self.plot(targ_arr[0],pred_arr[0])
         # report metrics
-        return self.calc_metrics(np.array(predictions), np.array(targets))
+        return self.calc_metrics(pred_arr,targ_arr)
 
     def check_prediction(self, data_point: DataPoint, prediction: np.ndarray):
         if not data_point.need_prediction:

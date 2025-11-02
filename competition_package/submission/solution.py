@@ -17,60 +17,49 @@ import pandas as pd
 from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 from torch.utils.tensorboard import SummaryWriter
-
+from sklearn.preprocessing import StandardScaler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
-EPOCHS = 1
-PATH = "weights/v2.pt"
+EPOCHS = 5
+PATH = r"weights\v3.pt"
+
+
+
+
 
 class TimeSeriesDataset(Dataset):
-    def __init__(self, df, seq_len=100):
-        """
-        df: DataFrame with columns [seq_ix, step_in_seq, f1, f2, ..., fN]
-        seq_len: number of previous steps to use
-        """
-        self.seq_len = seq_len
-
-        # Sort to ensure correct order
-        df = df.sort_values(by=["seq_ix", "step_in_seq"]).reset_index(drop=True)
-        
-        # Extract feature columns
-        self.feature_cols = [str(i) for i in range(32)]
-        # Group by sequence
+    def __init__(self, df, n_back=100):
         grouped = df.groupby("seq_ix")
-        self.samples = []
+        self.all_data = []
+        for _, group in tqdm(grouped):
+            group = group.drop(columns=['seq_ix','step_in_seq', 'need_prediction'])
+            for time_step in range(n_back-1,999):
+                window = group.iloc[time_step - n_back: time_step + 1]
+                if not window.empty:
+                    self.all_data.append(group.iloc[time_step-n_back:time_step+1])
 
-        for _, group in grouped:
-            feats = group[self.feature_cols].values  # shape (T, N)
-            T = len(feats)
-            if T <= seq_len:
-                continue
-            for i in range(T - seq_len):
-                X = feats[i:i + seq_len]
-                y = feats[i + seq_len]
-                self.samples.append((X, y))
-                
     def __len__(self):
-        return len(self.samples)
+        return len(self.all_data)
 
     def __getitem__(self, idx):
-        X, y = self.samples[idx]
-        return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+        dat = torch.tensor(self.all_data[idx].to_numpy(), dtype=torch.float32)
+        X, y = dat[:100], dat[100]
+        return X, y
 
 
 
 if __name__ == "__main__":
     # Check existence of test file
-    train_file = r"../datasets/train.csv"
-    test_file = r"../datasets/test.csv"
-    train_df = pd.read_csv(train_file)
-    test_df = pd.read_csv(test_file)
-    train_dataset = TimeSeriesDataset(train_df)
-    test_dataset = TimeSeriesDataset(test_df)
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    train_df = pd.read_parquet(train_file)
+    scaler = StandardScaler()
+    scaler = scaler.fit(train_df)
+    train_df_scaled2 = scaler.transform(train_df)
+    trian_df_scaled = pd.DataFrame(train_df_scaled2)
+    train_dataset = TimeSeriesDataset(trian_df_scaled, n_back=100)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     model = PredictionModel()
     # move model to device before creating optimizer
@@ -88,7 +77,7 @@ if __name__ == "__main__":
         os.makedirs(dirpath, exist_ok=True)
  
     # TensorBoard writer for live loss visualization
-    writer = SummaryWriter(log_dir="runs/exp2")
+    writer = SummaryWriter(log_dir=r"runs\exp4")
     global_step = 0
 
     for epoch in range(EPOCHS):
@@ -97,7 +86,7 @@ if __name__ == "__main__":
         for batch_idx, (inputs, targets) in enumerate(tqdm(train_loader)):
             inputs, targets = inputs.to(device), targets.to(device)
             preds = model(inputs)
-            print(inputs.shape, targets.shape)
+            # break
             loss = criterion(preds, targets)
             optimizer.zero_grad()
             loss.backward()
@@ -126,17 +115,14 @@ if __name__ == "__main__":
 
     #TESTING CODE ONLY#
     ##############################
-    model = PredictionModel(input_dim=32, hidden_dim=128, output_dim=32)
+    model = PredictionModel()
     # load weights from file (use map_location to be safe)
     print("Model fc layer:", model.fc)
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
-    scorer = ScorerStepByStep(test_file)
-
-    print("Testing simple model with moving average...")
-    print(f"Feature dimensionality: {scorer.dim}")
-    print(f"Number of rows in dataset: {len(scorer.dataset)}")
+    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
+    scorer = ScorerStepByStep(test)
 
     # Evaluate our solution
     results = scorer.score(model)

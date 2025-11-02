@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 RATIO = 0.8
-test_file = "datasets/train.parquet"
+test_file = "../datasets/train.parquet"
 
 df = pd.read_parquet(test_file)
 
@@ -16,5 +16,5 @@ train_seq_ixs = set(df['seq_ix'].unique()[:train_size])
 test_seq_ixs = set(df['seq_ix'].unique()[train_size:])
 train_df = df[df['seq_ix'].isin(train_seq_ixs)]
 test_df = df[df['seq_ix'].isin(test_seq_ixs)]
-train_df.to_csv("datasets/train.csv", index=False)
-test_df.to_csv("datasets/test.csv", index=False)
+train_df.to_csv("../datasets/train.csv", index=False)
+test_df.to_csv("../datasets/test.csv", index=False)
