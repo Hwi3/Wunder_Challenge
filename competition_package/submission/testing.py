@@ -21,9 +21,10 @@ from sklearn.preprocessing import StandardScaler
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
-EPOCHS = 10
+EPOCHS = 5
 #PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-PATH = "weights\lstm_w256_3+E10.pt"
+MODEL = "lstm_w256_3+E5.pt"
+PATH = f"weights/{MODEL}"
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
@@ -71,7 +72,7 @@ if __name__ == "__main__":
         os.makedirs(dirpath, exist_ok=True)
  
     # TensorBoard writer for live loss visualization
-    writer = SummaryWriter(log_dir=r"runs\exp7")
+    writer = SummaryWriter(log_dir=f"runs/{MODEL}")
     global_step = 0
 
     if training:

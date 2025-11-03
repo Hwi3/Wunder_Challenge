@@ -13,13 +13,13 @@ class PredictionModel(nn.Module):
     """
     LSTM
     """
-    def __init__(self, input_dim=32, hidden_dim=128, num_layers=4, output_dim=32):
+    def __init__(self, input_dim=32, hidden_dim=256, num_layers=3, output_dim=32):
         super().__init__()
 
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_dim)
-        state_dict = torch.load("weights/lstm_w128_4.pt", map_location='cpu')
+        state_dict = torch.load("weights/lstm_w256_3+E10.pt", map_location='cpu')
         self.load_state_dict(state_dict, strict=False)
 
     def forward(self, x):

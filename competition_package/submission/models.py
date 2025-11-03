@@ -30,7 +30,7 @@ class PredictionModel(nn.Module):
     """
     LSTM
     """
-    def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
+    def __init__(self, input_dim=32, hidden_dim=256, num_layers=3, output_dim=32):
         super().__init__()
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
