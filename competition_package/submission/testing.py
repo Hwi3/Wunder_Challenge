@@ -7,7 +7,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Add project root folder to path for importing utils
 sys.path.append(f"{CURRENT_DIR}/..")
 
-
 import numpy as np
 from utils import DataPoint, ScorerStepByStep
 from models import PredictionModel
@@ -22,12 +21,9 @@ from sklearn.preprocessing import StandardScaler
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
-EPOCHS = 5
-PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-
-
-
-
+EPOCHS = 10
+#PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
+PATH = "weights\lstm_w256_3+E10.pt"
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
@@ -51,10 +47,10 @@ class TimeSeriesDataset(Dataset):
 
 
 if __name__ == "__main__":
-    training = False
+    training = True
     # Check existence of test file
-    #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
-    train_file = r"/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
+    train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    #train_file = r"/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
     train_df = pd.read_parquet(train_file)
     train_dataset = TimeSeriesDataset(train_df, n_back=100)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -64,10 +60,10 @@ if __name__ == "__main__":
     model = model.to(device)
     criterion = nn.MSELoss()
     # start lr 0.01
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
     # end_factor = 0.0005 / 0.01 = 0.05
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.05, total_iters=EPOCHS)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=1e-3, total_iters=EPOCHS)
  
     # ensure weights directory exists
     dirpath = os.path.dirname(PATH)
@@ -75,7 +71,7 @@ if __name__ == "__main__":
         os.makedirs(dirpath, exist_ok=True)
  
     # TensorBoard writer for live loss visualization
-    writer = SummaryWriter(log_dir=r"runs\exp4")
+    writer = SummaryWriter(log_dir=r"runs\exp7")
     global_step = 0
 
     if training:
@@ -120,7 +116,8 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
-    test = r"/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
+    #test = r"/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
+    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
     scorer = ScorerStepByStep(test)
 
     # Evaluate our solution
