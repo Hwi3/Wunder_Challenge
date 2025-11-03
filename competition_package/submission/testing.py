@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
 EPOCHS = 5
-PATH = r"weights\v3.pt"
+PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
 
 
 
@@ -51,14 +51,12 @@ class TimeSeriesDataset(Dataset):
 
 
 if __name__ == "__main__":
+    training = False
     # Check existence of test file
-    train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    train_file = r"/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
     train_df = pd.read_parquet(train_file)
-    scaler = StandardScaler()
-    scaler = scaler.fit(train_df)
-    train_df_scaled2 = scaler.transform(train_df)
-    trian_df_scaled = pd.DataFrame(train_df_scaled2)
-    train_dataset = TimeSeriesDataset(trian_df_scaled, n_back=100)
+    train_dataset = TimeSeriesDataset(train_df, n_back=100)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     model = PredictionModel()
@@ -80,35 +78,36 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=r"runs\exp4")
     global_step = 0
 
-    for epoch in range(EPOCHS):
-        model.train()
-        total_loss = 0.0
-        for batch_idx, (inputs, targets) in enumerate(tqdm(train_loader)):
-            inputs, targets = inputs.to(device), targets.to(device)
-            preds = model(inputs)
-            # break
-            loss = criterion(preds, targets)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
+    if training:
+        for epoch in range(EPOCHS):
+            model.train()
+            total_loss = 0.0
+            for batch_idx, (inputs, targets) in enumerate(tqdm(train_loader)):
+                inputs, targets = inputs.to(device), targets.to(device)
+                preds = model(inputs)
+                # break
+                loss = criterion(preds, targets)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+    
+                # log per-batch loss
+                writer.add_scalar("train/loss_batch", loss.item(), global_step)
+                # log current learning rate (per-batch)
+                current_lr = optimizer.param_groups[0]["lr"]
+                writer.add_scalar("train/lr", current_lr, global_step)
+                global_step += 1
+    
+            avg_loss = total_loss / len(train_loader) if len(train_loader) > 0 else float("nan")
+            writer.add_scalar("train/loss_epoch", avg_loss, epoch)
+            print(f"Epoch {epoch+1}: loss={avg_loss:.6f} lr={optimizer.param_groups[0]['lr']:.6e}")
+            # step scheduler once per epoch
+            scheduler.step()
  
-            # log per-batch loss
-            writer.add_scalar("train/loss_batch", loss.item(), global_step)
-            # log current learning rate (per-batch)
-            current_lr = optimizer.param_groups[0]["lr"]
-            writer.add_scalar("train/lr", current_lr, global_step)
-            global_step += 1
- 
-        avg_loss = total_loss / len(train_loader) if len(train_loader) > 0 else float("nan")
-        writer.add_scalar("train/loss_epoch", avg_loss, epoch)
-        print(f"Epoch {epoch+1}: loss={avg_loss:.6f} lr={optimizer.param_groups[0]['lr']:.6e}")
-        # step scheduler once per epoch
-        scheduler.step()
- 
-    writer.flush()
-    torch.save(model.state_dict(), PATH)
-    writer.close()
+        writer.flush()
+        torch.save(model.state_dict(), PATH)
+        writer.close()
 
     # Load data into scorer
     ##############################
@@ -121,7 +120,7 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
-    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
+    test = r"/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
     scorer = ScorerStepByStep(test)
 
     # Evaluate our solution

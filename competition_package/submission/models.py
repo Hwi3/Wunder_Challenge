@@ -26,8 +26,6 @@ from transformers import MambaConfig, MambaModel
 
 #         return np.mean(self.sequence_history, axis=0)
     
-
-
 class PredictionModel(nn.Module):
     """
     LSTM
@@ -41,8 +39,7 @@ class PredictionModel(nn.Module):
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
         out, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
-        last_hidden = out[:, -1, :]  # use last time step
-        x = self.fc(last_hidden)
+        x = self.fc(out[:, -1, :])
         return x
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
@@ -54,14 +51,16 @@ class PredictionModel(nn.Module):
             self.idx_prev100_list = []
     
         # First 100 steps, just store the history
+        self.idx_prev100_list.append(data_point.state.copy())
         if not data_point.need_prediction:
-            self.idx_prev100_list.append(data_point.state.copy())
             return None
 
         ## Prediction starts
         # Reset the history to last 100 steps
         if len(self.idx_prev100_list) > 100:
-            self.idx_prev100_list = self.idx_prev100_list[-100:]
+            self.idx_prev100_list.pop(0)
+            #self.idx_prev100_list = self.idx_prev100_list[-100:]
+
             
         # Prepare Input Tensor
         input_tensor = torch.tensor(self.idx_prev100_list, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 100, feature_dim)
@@ -69,6 +68,8 @@ class PredictionModel(nn.Module):
         out = self.forward(input_tensor)
         out = out.reshape(32, -1)
         return out.detach().numpy()
+
+
 
 
 # class PredictionModel(nn.Module):

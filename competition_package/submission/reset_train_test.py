@@ -2,8 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 
-RATIO = 0.8
-test_file = "../datasets/train.parquet"
+RATIO = 0.9
+test_file = "/workspaces/Wunder_Challenge/competition_package/submission/datasets/train.parquet"
 
 df = pd.read_parquet(test_file)
 

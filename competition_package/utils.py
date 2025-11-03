@@ -60,7 +60,8 @@ class ScorerStepByStep:
         
         pred_arr = np.array(predictions)
         targ_arr = np.array(targets)
-        self.plot(targ_arr[0],pred_arr[0])
+        print(pred_arr[1:4,0])
+        self.plot(targ_arr[:,0],pred_arr[:,0])
         # report metrics
         return self.calc_metrics(pred_arr,targ_arr)
 
