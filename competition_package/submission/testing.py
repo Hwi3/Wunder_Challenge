@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 EPOCHS = 5
 #PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-MODEL = "lstm2_w256_2_E5+DO"
+MODEL = "lstm3_w256_2_E5+DO"
 PATH = f"weights/{MODEL}.pt"
 
 training = True
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
     # end_factor = 0.0005 / 0.01 = 0.05
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=1e-3, total_iters=EPOCHS)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.05, total_iters=EPOCHS)
  
     # ensure weights directory exists
     dirpath = os.path.dirname(PATH)
@@ -115,7 +115,6 @@ if __name__ == "__main__":
     ##############################
     model = PredictionModel()
     # load weights from file (use map_location to be safe)
-    print("Model fc layer:", model.fc)
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
