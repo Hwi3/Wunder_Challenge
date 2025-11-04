@@ -23,8 +23,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 EPOCHS = 5
 #PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-MODEL = "lstm_w256_3+E5.pt"
-PATH = f"weights/{MODEL}"
+MODEL = "lstm_w32_10+E5"
+PATH = f"weights/{MODEL}.pt"
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
@@ -48,10 +48,10 @@ class TimeSeriesDataset(Dataset):
 
 
 if __name__ == "__main__":
-    training = True
+    training = False
     # Check existence of test file
-    train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
-    #train_file = r"/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
+    #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    train_file = "/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
     train_df = pd.read_parquet(train_file)
     train_dataset = TimeSeriesDataset(train_df, n_back=100)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -117,9 +117,9 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
-    #test = r"/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
-    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
-    scorer = ScorerStepByStep(test)
+    test = "/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
+    #test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
+    scorer = ScorerStepByStep(test,MODEL)
 
     # Evaluate our solution
     results = scorer.score(model)
