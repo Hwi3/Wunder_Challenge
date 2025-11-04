@@ -31,32 +31,28 @@ class ScorerStepByStep:
         self.features = self.dataset.columns[3:]
 
     def plot_all_features(self, Y_train, predicted):
-        num_features = Y_train.shape[1]  # typically 32
+    
+        num_features = Y_train.shape[1]  # should be 32
         rows, cols = 4, 8
         fig, axes = plt.subplots(rows, cols, figsize=(24, 12))
-        fig.suptitle("Actual vs Predicted Scatter Plot (Each Feature)", fontsize=16)
-    
+        fig.suptitle("Actual vs Predicted (Dots Only, No Lines)", fontsize=16)
+
         for i in range(num_features):
             r, c = divmod(i, cols)
             ax = axes[r, c]
-            ax.scatter(Y_train[:, i], predicted[:, i], s=5, alpha=0.6)
+            ax.scatter(range(len(Y_train)), Y_train[:, i], label='Actual', s=8, alpha=0.7)
+            ax.scatter(range(len(predicted)), predicted[:, i], label='Predicted', s=8, alpha=0.7)
             ax.set_title(f'Feature {i+1}', fontsize=9)
-            ax.set_xlabel("Actual", fontsize=8)
-            ax.set_ylabel("Predicted", fontsize=8)
             ax.tick_params(axis='both', which='major', labelsize=7)
             ax.grid(True, linestyle='--', alpha=0.4)
-    
-            # Add y=x reference line
-            min_val = min(Y_train[:, i].min(), predicted[:, i].min())
-            max_val = max(Y_train[:, i].max(), predicted[:, i].max())
-            ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=1)
-    
 
-        # Hide any unused subplots if num_features < rows*cols
+            if i == 0:
+                ax.legend(fontsize=8, loc='upper right')
+
+        # Hide unused subplots
         for j in range(num_features, rows * cols):
             r, c = divmod(j, cols)
             axes[r, c].axis('off')
-
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         plt.savefig(f"runs/{self.plot_dir}/graph_all_features.png", dpi=300)
         plt.show()
@@ -83,7 +79,7 @@ class ScorerStepByStep:
 
             self.check_prediction(data_point, next_prediction)
         
-        pred_arr = np.array(predictions)*2
+        pred_arr = np.array(predictions)
         targ_arr = np.array(targets)
         self.plot_all_features(targ_arr,pred_arr)
         # report metrics
