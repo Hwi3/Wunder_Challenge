@@ -18,9 +18,9 @@ class PredictionModel(nn.Module):
         super().__init__()
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.fc1 = nn.Linear(hidden_dim, 128)
-        self.fc2 = nn.Linear(128, output_dim)
-        state_dict = torch.load("weights/lstm3_w256_2_E5+DO.pt", map_location='cpu')
+        self.fc1 = nn.Linear(hidden_dim, 64)
+        self.fc2 = nn.Linear(64, output_dim)
+        state_dict = torch.load("weights/lstm3_w256_64_2_E5+DO.pt", map_location='cpu')
         self.load_state_dict(state_dict, strict=False)
 
 

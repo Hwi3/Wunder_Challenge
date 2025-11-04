@@ -11,8 +11,8 @@ class PredictionModel(nn.Module):
         super().__init__()
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.fc1 = nn.Linear(hidden_dim, 128)
-        self.fc2 = nn.Linear(128, output_dim)
+        self.fc1 = nn.Linear(hidden_dim, 64)
+        self.fc2 = nn.Linear(64, output_dim)
 
     def forward(self, x):
         # x: (batch, seq_len, input_dim)

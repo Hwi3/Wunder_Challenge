@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 EPOCHS = 5
 #PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-MODEL = "lstm3_w256_2_E5+DO"
+MODEL = "lstm3_w256_64_2_E5+DO"
 PATH = f"weights/{MODEL}.pt"
 
 training = True
