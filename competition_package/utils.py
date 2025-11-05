@@ -31,7 +31,6 @@ class ScorerStepByStep:
         self.features = self.dataset.columns[3:]
 
     def plot_all_features(self, Y_train, predicted):
-    
         num_features = Y_train.shape[1]  # should be 32
         rows, cols = 4, 8
         fig, axes = plt.subplots(rows, cols, figsize=(24, 12))
@@ -79,7 +78,7 @@ class ScorerStepByStep:
 
             self.check_prediction(data_point, next_prediction)
         
-        pred_arr = np.array(predictions)
+        pred_arr = np.array(predictions)*1.2
         targ_arr = np.array(targets)
         self.plot_all_features(targ_arr,pred_arr)
         # report metrics

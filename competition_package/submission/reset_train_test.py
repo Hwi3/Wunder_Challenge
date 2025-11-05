@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-RATIO = 0.99
+RATIO = 0.9
 test_file = "../datasets/train.parquet"
 
 df = pd.read_parquet(test_file)

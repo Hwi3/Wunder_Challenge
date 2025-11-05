@@ -3,6 +3,10 @@ from utils import DataPoint
 import torch
 import torch.nn as nn
 
+##LSTM1 lstm + fc
+##LSTM2 lstm + fc1 + fc2
+##LSTM3 lstm + fc1 + fc2
+##LSTM4 lstm + fc1 + wb
 class PredictionModel(nn.Module):
     """
     LSTM
@@ -11,15 +15,17 @@ class PredictionModel(nn.Module):
         super().__init__()
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.fc1 = nn.Linear(hidden_dim, 64)
-        self.fc2 = nn.Linear(64, output_dim)
+        self.fc1 = nn.Linear(hidden_dim, output_dim)
+        self.weight = nn.Parameter(torch.ones(output_dim))
+        self.bias = nn.Parameter(torch.zeros(output_dim))
+
 
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
         out1, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
         out2 = self.fc1(out1[:, -1, :])
-        x = self.fc2(out2)
-        return x
+        out3 = out2 * self.weight + self.bias
+        return out3
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
         ## Predict Next State
