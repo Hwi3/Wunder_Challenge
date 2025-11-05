@@ -11,7 +11,7 @@ class PredictionModel(nn.Module):
     """
     LSTM
     """
-    def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
+    def __init__(self, input_dim=32, hidden_dim=256, num_layers=1, output_dim=32):
         super().__init__()
         self.current_seq_ix = None
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
@@ -28,31 +28,40 @@ class PredictionModel(nn.Module):
         return out3
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
-        ## Predict Next State
-
-        # For every new Sequence, reset the history
+        ## Reset for new sequence
         if self.current_seq_ix != data_point.seq_ix:
             self.current_seq_ix = data_point.seq_ix
-            self.idx_prev100_list = []
-    
-        # First 100 steps, just store the history
-        self.idx_prev100_list.append(data_point.state.copy())
+            
+            # Preallocate tensor buffer once (100, 32)
+            self.buffer = torch.zeros(100, 32, dtype=torch.float32)
+            self.buffer_count = 0   # how many steps filled so far
+
+        # Add new state into buffer
+        new_state = torch.from_numpy(data_point.state).float()  # shape (32,)
+
+        if self.buffer_count < 100:
+            # still filling initial window
+            self.buffer[self.buffer_count] = new_state
+            self.buffer_count += 1
+        else:
+            # sliding the window
+            self.buffer[:-1] = self.buffer[1:].clone()
+            self.buffer[-1] = new_state
+
+        # If not time to predict
         if not data_point.need_prediction:
             return None
+        
+        # Need at least 100 steps to produce prediction
+        if self.buffer_count < 100:
+            return None
 
-        ## Prediction starts
-        # Reset the history to last 100 steps
-        if len(self.idx_prev100_list) > 100:
-            self.idx_prev100_list.pop(0)
-            #self.idx_prev100_list = self.idx_prev100_list[-100:]
-
-            
-        # Prepare Input Tensor
-        input_tensor = torch.tensor(self.idx_prev100_list, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 100, feature_dim)
+        # Prepare Input Tensor (NO COPY)
+        input_tensor = self.buffer.unsqueeze(0)  # shape (1, 100, 32)
 
         out = self.forward(input_tensor)
-        out = out.reshape(32, -1)
-        return out.detach().numpy()
+        return out.reshape(32, -1).detach().numpy()
+
     
 # class PredictionModel(nn.Module):
 #     """

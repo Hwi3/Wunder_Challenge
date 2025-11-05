@@ -4,6 +4,7 @@ from tqdm.auto import tqdm
 from dataclasses import dataclass
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
+import os
 
 
 @dataclass
@@ -18,7 +19,6 @@ class DataPoint:
 class PredictionModel:
     def predict(self, data_point: DataPoint) -> np.ndarray:
         # return current state as dummy prediction
-        print("HIHIOHOHOHOo")
         return data_point.state
 
 
@@ -53,6 +53,8 @@ class ScorerStepByStep:
             r, c = divmod(j, cols)
             axes[r, c].axis('off')
         plt.tight_layout(rect=[0, 0, 1, 0.97])
+        if os.path.dirname(f"runs/{self.plot_dir}"):
+            os.makedirs(dirpath, exist_ok=True)
         plt.savefig(f"runs/{self.plot_dir}/graph_all_features.png", dpi=300)
         plt.show()
 

@@ -23,10 +23,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 EPOCHS = 3
 #PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-MODEL = "lstm4_w256_64_2_E3+DO"
+MODEL = "lstm4_w256_2_E3+DO_0_3"
 PATH = f"weights/{MODEL}.pt"
 
-training = True
+training = False
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
@@ -78,31 +78,36 @@ if __name__ == "__main__":
 
     # Check existence of test file
     #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
-    train_file = "/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
-    train_df = pd.read_parquet(train_file)
-    train_dataset = TimeSeriesDataset(train_df, n_back=100)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    #train_file = "/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
+    train_file_csv = "/workspaces/Wunder_Challenge/competition_package/datasets/train.csv"
+    #train_df = pd.read_parquet(train_file)
+    train_df = pd.read_csv(train_file_csv)
 
-    model = PredictionModel()
-    # move model to device before creating optimizer
-    model = model.to(device)
-    criterion = nn.MSELoss()
-    # start lr 0.01
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
-    # end_factor = 0.0005 / 0.01 = 0.05
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=EPOCHS)
- 
-    # ensure weights directory exists
-    dirpath = os.path.dirname(PATH)
-    if dirpath:
-        os.makedirs(dirpath, exist_ok=True)
- 
-    # TensorBoard writer for live loss visualization
-    writer = SummaryWriter(log_dir=f"runs/{MODEL}")
-    global_step = 0
+
+
+
 
     if training:
+        train_dataset = TimeSeriesDataset(train_df, n_back=100)
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+        model = PredictionModel()
+        # move model to device before creating optimizer
+        model = model.to(device)
+        criterion = nn.MSELoss()
+        # start lr 0.01
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
+        # end_factor = 0.0005 / 0.01 = 0.05
+        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=EPOCHS)
+    
+        # ensure weights directory exists
+        dirpath = os.path.dirname(PATH)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
+    
+        # TensorBoard writer for live loss visualization
+        writer = SummaryWriter(log_dir=f"runs/{MODEL}")
+        global_step = 0
         for epoch in range(EPOCHS):
             model.train()
             total_loss = 0.0
@@ -128,7 +133,7 @@ if __name__ == "__main__":
             print(f"Epoch {epoch+1}: loss={avg_loss:.6f} lr={optimizer.param_groups[0]['lr']:.6e}")
             # step scheduler once per epoch
             scheduler.step()
-            torch.save(model.state_dict(), PATH[:-3]+f"_{epoch}_{EPOCHS}"+".pt")
+            torch.save(model.state_dict(), PATH[:-3]+f"_{epoch+1}_{EPOCHS}"+".pt")
  
         writer.flush()
         writer.close()
