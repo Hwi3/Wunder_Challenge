@@ -54,7 +54,7 @@ class ScorerStepByStep:
             axes[r, c].axis('off')
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         if os.path.dirname(f"runs/{self.plot_dir}"):
-            os.makedirs(dirpath, exist_ok=True)
+            os.makedirs(f"runs/{self.plot_dir}", exist_ok=True)
         plt.savefig(f"runs/{self.plot_dir}/graph_all_features.png", dpi=300)
         plt.show()
 

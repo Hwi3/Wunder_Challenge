@@ -9,7 +9,8 @@ class DataPoint:
     #
     state: np.ndarray
 
-
+#        state_dict = torch.load("weights/lstm3_w256_64_2_E5+DO.pt", map_location='cpu')
+#        self.load_state_dict(state_dict, strict=False)
 class PredictionModel(nn.Module):
     """
     LSTM
@@ -17,19 +18,18 @@ class PredictionModel(nn.Module):
     def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
         super().__init__()
         self.current_seq_ix = None
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.fc1 = nn.Linear(hidden_dim, 64)
-        self.fc2 = nn.Linear(64, output_dim)
-        state_dict = torch.load("weights/lstm3_w256_64_2_E5+DO.pt", map_location='cpu')
+        self.lstm1 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.lstm2 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.fc1 = nn.Linear(hidden_dim, output_dim)
+        state_dict = torch.load("weights/lstm5_w256_2_E3_3_3.pt", map_location='cpu')
         self.load_state_dict(state_dict, strict=False)
-
 
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
-        out, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
-        out2 = self.fc1(out[:, -1, :])
-        out3 = self.fc2(out2)
-        return out3
+        out1_1, _ = self.lstm1(x)  # out: (batch, seq_len, hidden_dim)
+        out1_2, _ = self.lstm2(x[:,:-10,:])
+        out2 = self.fc1(((out1_1[:, -1, :]+out1_2[:, -1, :])/2))
+        return out2
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
         ## Predict Next State

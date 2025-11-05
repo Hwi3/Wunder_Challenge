@@ -7,25 +7,24 @@ import torch.nn as nn
 ##LSTM2 lstm + fc1 + fc2
 ##LSTM3 lstm + fc1 + fc2
 ##LSTM4 lstm + fc1 + wb
+##LSTM5 double LSTM 
 class PredictionModel(nn.Module):
     """
     LSTM
     """
-    def __init__(self, input_dim=32, hidden_dim=256, num_layers=1, output_dim=32):
+    def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
         super().__init__()
         self.current_seq_ix = None
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.lstm1 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.lstm2 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
         self.fc1 = nn.Linear(hidden_dim, output_dim)
-        self.weight = nn.Parameter(torch.ones(output_dim))
-        self.bias = nn.Parameter(torch.zeros(output_dim))
-
 
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
-        out1, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
-        out2 = self.fc1(out1[:, -1, :])
-        out3 = out2 * self.weight + self.bias
-        return out3
+        out1_1, _ = self.lstm1(x)  # out: (batch, seq_len, hidden_dim)
+        out1_2, _ = self.lstm2(x[:,:-10,:])
+        out2 = self.fc1(((out1_1[:, -1, :]+out1_2[:, -1, :])/2))
+        return out2
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
         ## Reset for new sequence

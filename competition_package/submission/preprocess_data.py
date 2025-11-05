@@ -25,15 +25,3 @@ train, test = np.split(train, [int(SPLIT * len(train))])
 np.save(r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.npy", train)
 np.save(r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.npy", test)
 
-
-
-    # feats = group[self.feature_cols].values.astype(float)  # shape (T, N)
-    # # apply standardization using train stats (or provided stats)
-    # feats = (feats - self.mean) / (self.std + self.eps)
-    # T = len(feats)
-    # if T <= seq_len:
-    #     continue
-    # for i in range(T - seq_len):
-    #     X = feats[i:i + seq_len]
-    #     y = feats[i + seq_len]
-    #     self.samples.append((X, y))

@@ -21,16 +21,14 @@ from sklearn.preprocessing import StandardScaler
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
-EPOCHS = 3
-#PATH = r"/workspaces/Wunder_Challenge/competition_package/submission/weights/v3.pt"
-MODEL = "lstm4_w256_2_E3+DO_0_3"
+EPOCHS = 5
+MODEL = "lstm5_w256_2_E3"
 PATH = f"weights/{MODEL}.pt"
 
-training = False
+training = True
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
-
         grouped = df.groupby("seq_ix")
         self.all_data = []
         for _, group in tqdm(grouped):
@@ -48,30 +46,6 @@ class TimeSeriesDataset(Dataset):
         X, y = dat[:100], dat[100]
         return X, y
     
-    #         if normalized:
-    #        X_scaled, mins, maxs = self.scale_to_neg1_pos1(group)
-        
-    # def scale_to_neg1_pos1(self,X):
-    #     """
-    #     X: shape (100, 32) — or generally (T, D)
-    #     Returns: X_scaled, mins, maxs
-    #     """
-    #     mins = np.nanmin(X, axis=0)
-    #     maxs = np.nanmax(X, axis=0)
-    #     ranges = maxs - mins
-
-    #     # Avoid divide-by-zero for constant columns
-    #     safe_ranges = np.where(ranges == 0, 1.0, ranges)
-
-    #     X_scaled = 2 * (X - mins) / safe_ranges - 1
-    #     # Put constants exactly at 0
-    #     X_scaled[:, ranges == 0] = 0.0
-    #     return X_scaled, mins, maxs
-
-    # def inverse_scale_from_neg1_pos1(self, X_scaled, mins, maxs):
-    #     ranges = maxs - mins
-    #     return ((X_scaled + 1) / 2) * ranges + mins
-
 
 
 if __name__ == "__main__":
@@ -80,10 +54,9 @@ if __name__ == "__main__":
     #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
     #train_file = "/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
     train_file_csv = "/workspaces/Wunder_Challenge/competition_package/datasets/train.csv"
+    train_file_csv = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.csv"
     #train_df = pd.read_parquet(train_file)
     train_df = pd.read_csv(train_file_csv)
-
-
 
 
 
@@ -95,10 +68,10 @@ if __name__ == "__main__":
         model = model.to(device)
         criterion = nn.MSELoss()
         # start lr 0.01
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
         # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
         # end_factor = 0.0005 / 0.01 = 0.05
-        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=EPOCHS)
+        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.05, total_iters=EPOCHS)
     
         # ensure weights directory exists
         dirpath = os.path.dirname(PATH)
@@ -149,7 +122,7 @@ if __name__ == "__main__":
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
     test = "/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
-    #test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
+    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
     scorer = ScorerStepByStep(test,MODEL)
 
     # Evaluate our solution
