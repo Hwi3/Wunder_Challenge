@@ -28,7 +28,7 @@ class PredictionModel(nn.Module):
         # x: (batch, seq_len, input_dim)
         out1_1, _ = self.lstm1(x)  # out: (batch, seq_len, hidden_dim)
         out1_2, _ = self.lstm2(x[:,:-10,:])
-        out2 = self.fc1(((out1_1[:, -1, :]+out1_2[:, -1, :])/2))
+        out2 = self.fc1(((out1_1[:, -1, :]+out1_2[:, -1, :])))
         return out2
     
     def predict(self, data_point: DataPoint) -> np.ndarray:

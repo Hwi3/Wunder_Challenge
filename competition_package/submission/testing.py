@@ -22,10 +22,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(device)
 EPOCHS = 5
-MODEL = "lstm5_w256_2_E3"
+MODEL = "lstm5_w256_2_E3_5_5"
 PATH = f"weights/{MODEL}.pt"
 
-training = True
+training = False
 
 class TimeSeriesDataset(Dataset):
     def __init__(self, df, n_back=100):
@@ -51,12 +51,12 @@ class TimeSeriesDataset(Dataset):
 if __name__ == "__main__":
 
     # Check existence of test file
-    #train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
+    train_file = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.parquet"
     #train_file = "/workspaces/Wunder_Challenge/competition_package/datasets/train.parquet"
     train_file_csv = "/workspaces/Wunder_Challenge/competition_package/datasets/train.csv"
     train_file_csv = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\train.csv"
-    #train_df = pd.read_parquet(train_file)
-    train_df = pd.read_csv(train_file_csv)
+    train_df = pd.read_parquet(train_file)
+    #train_df = pd.read_csv(train_file_csv)
 
 
 
@@ -68,10 +68,10 @@ if __name__ == "__main__":
         model = model.to(device)
         criterion = nn.MSELoss()
         # start lr 0.01
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+        optimizer = torch.optim.Adam(model.parameters(), lr=5e-3)
         # Linear scheduler: multiply lr from 1.0 -> end_factor over EPOCHS epochs
         # end_factor = 0.0005 / 0.01 = 0.05
-        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.05, total_iters=EPOCHS)
+        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.01, total_iters=EPOCHS)
     
         # ensure weights directory exists
         dirpath = os.path.dirname(PATH)
@@ -121,8 +121,8 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(PATH, map_location=device))
     model.eval()
     # ScorerStepByStep expects a path to the dataset file, not a DataFrame
-    test = "/workspaces/Wunder_Challenge/competition_package/datasets/test.csv"
-    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test.csv"
+    #test = "/workspaces/Wunder_Challenge/competition_package/datasets/test2.csv"
+    test = r"C:\Users\hwisa\OneDrive\문서\Projects\Wunder_Challenge\competition_package\datasets\test2.csv"
     scorer = ScorerStepByStep(test,MODEL)
 
     # Evaluate our solution
