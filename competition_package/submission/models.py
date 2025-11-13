@@ -8,22 +8,26 @@ import torch.nn as nn
 ##LSTM3 lstm + fc1 + fc2
 ##LSTM4 lstm + fc1 + wb
 ##LSTM5 double LSTM 
+##LSTM7 double LSTM 30, 10
+##LSTREE 
+
+
 class PredictionModel(nn.Module):
     """
     LSTM
     """
-    def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
+    def __init__(self, input_dim=32, hidden_dim=128, num_layers=2, output_dim=32):
         super().__init__()
+        self.n_back = 100
         self.current_seq_ix = None
-        self.lstm1 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.lstm2 = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-        self.fc1 = nn.Linear(hidden_dim, output_dim)
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.tree = SoftDecisionTree(in_features = hidden_dim, depth = 3, out_dim=output_dim)
 
     def forward(self, x):
         # x: (batch, seq_len, input_dim)
-        out1_1, _ = self.lstm1(x)  # out: (batch, seq_len, hidden_dim)
-        out1_2, _ = self.lstm2(x[:,:-10,:])
-        out2 = self.fc1(((out1_1[:, -1, :]+out1_2[:, -1, :])))
+        out1, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
+        h_last = out1[:, -1, :]
+        out2 = self.tree(h_last) 
         return out2
     
     def predict(self, data_point: DataPoint) -> np.ndarray:
@@ -32,13 +36,13 @@ class PredictionModel(nn.Module):
             self.current_seq_ix = data_point.seq_ix
             
             # Preallocate tensor buffer once (100, 32)
-            self.buffer = torch.zeros(100, 32, dtype=torch.float32)
+            self.buffer = torch.zeros(self.n_back, 32, dtype=torch.float32)
             self.buffer_count = 0   # how many steps filled so far
 
         # Add new state into buffer
         new_state = torch.from_numpy(data_point.state).float()  # shape (32,)
 
-        if self.buffer_count < 100:
+        if self.buffer_count < self.n_back:
             # still filling initial window
             self.buffer[self.buffer_count] = new_state
             self.buffer_count += 1
@@ -52,7 +56,7 @@ class PredictionModel(nn.Module):
             return None
         
         # Need at least 100 steps to produce prediction
-        if self.buffer_count < 100:
+        if self.buffer_count < self.n_back:
             return None
 
         # Prepare Input Tensor (NO COPY)
@@ -61,86 +65,55 @@ class PredictionModel(nn.Module):
         out = self.forward(input_tensor)
         return out.reshape(32, -1).detach().numpy()
 
-    
-# class PredictionModel(nn.Module):
-#     """
-#     LSTM
-#     """
-#     def __init__(self, input_dim=32, hidden_dim=256, num_layers=2, output_dim=32):
-#         super().__init__()
-#         self.current_seq_ix = None
-#         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
-#         self.fc = nn.Linear(hidden_dim, output_dim)
+class SoftDecisionTree(nn.Module):
+    """
+    Differentiable binary decision tree.
+    depth=3 creates 8 leaves and 7 internal nodes.
+    The output_dim matches your 32-dim target.
+    """
+    def __init__(self, in_features, depth=3, out_dim=32):
+        super().__init__()
+        self.in_features = in_features
+        self.depth = depth
+        self.out_dim = out_dim
 
+        self.num_internal_nodes = 2 ** depth - 1
+        self.num_leaves = 2 ** depth
 
-#     def forward(self, x):
-#         # x: (batch, seq_len, input_dim)
-#         out, _ = self.lstm(x)  # out: (batch, seq_len, hidden_dim)
-#         x = self.fc(out[:, -1, :])
-#         return x
-    
-#     def predict(self, data_point: DataPoint) -> np.ndarray:
-#         ## Predict Next State
+        # gating: linear layer for each internal node
+        self.node_weights = nn.Parameter(
+            torch.randn(self.num_internal_nodes, in_features) * 0.1
+        )
+        self.node_bias = nn.Parameter(torch.zeros(self.num_internal_nodes))
 
-#         # For every new Sequence, reset the history
-#         if self.current_seq_ix != data_point.seq_ix:
-#             self.current_seq_ix = data_point.seq_ix
-#             self.idx_prev100_list = []
-    
-#         # First 100 steps, just store the history
-#         self.idx_prev100_list.append(data_point.state.copy())
-#         if not data_point.need_prediction:
-#             return None
+        # outputs: one vector per leaf
+        self.leaf_values = nn.Parameter(
+            torch.randn(self.num_leaves, out_dim) * 0.1
+        )
 
-#         ## Prediction starts
-#         # Reset the history to last 100 steps
-#         if len(self.idx_prev100_list) > 100:
-#             self.idx_prev100_list.pop(0)
-#             #self.idx_prev100_list = self.idx_prev100_list[-100:]
+    def forward(self, x):
+        """
+        x: (B, in_features)
+        returns: (B, out_dim)
+        """
+        B = x.size(0)
 
-            
-#         # Prepare Input Tensor
-#         input_tensor = torch.tensor(self.idx_prev100_list, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 100, feature_dim)
+        # gate probabilities for internal nodes
+        logits = x @ self.node_weights.t() + self.node_bias  # (B, num_internal)
+        gates = torch.sigmoid(logits)
 
-#         out = self.forward(input_tensor)
-#         out = out.reshape(32, -1)
-#         return out.detach().numpy()
+        # propagate down tree
+        path_probs = x.new_ones(B, 1)
 
+        for level in range(self.depth):
+            start = 2 ** level - 1
+            end = 2 ** (level + 1) - 1
+            g = gates[:, start:end]  # (B, 2^level)
 
+            left = path_probs * (1 - g)
+            right = path_probs * g
+            path_probs = torch.cat([left, right], dim=1)
 
-
-# class PredictionModel(nn.Module):
-#     def __init__(self, input_dim, hidden_dim=128):
-#         self.sequence_history = []
-#         super().__init__()
-#         hidden_dim = 128
-#         self.input_proj = nn.Linear(input_dim, hidden_dim)
-
-#         config = MambaConfig(
-#             hidden_size=hidden_dim,
-#             num_hidden_layers=4,
-#             intermediate_size=hidden_dim * 2,
-#             vocab_size=1,  # unused
-#         )
-#         self.backbone = MambaModel(config)
-#         self.fc = nn.Linear(hidden_dim, input_dim)
-
-#     def forward(self, x):
-#         x = self.input_proj(x)  
-#         out = self.backbone(inputs_embeds=x).last_hidden_state
-#         return self.fc(out)
-    
-#     def predict(self, data_point: DataPoint) -> np.ndarray:
-#         ## Predict Next State
-#         if self.current_seq_ix != data_point.seq_ix:
-#             self.current_seq_ix = data_point.seq_ix
-#             self.sequence_history = []
-
-#         if not data_point.need_prediction:
-#             self.sequence_history.append(data_point.state.copy())
-#             return None
-
-#         ## Prediction starts
-
-        
-#         return self.forward(data_point.state)
+        # weighted sum of leaf outputs
+        out = path_probs @ self.leaf_values  # (B, out_dim)
+        return out
